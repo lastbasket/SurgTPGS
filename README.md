@@ -16,7 +16,7 @@
     <a href="https://www.professoren.tum.de/en/navab-nassir"><strong>Nassir Navab</strong></a>,
     <a href="https://www.ee.cuhk.edu.hk/ren/"><strong>Hongliang Ren</strong></a>
   </p>
-  <h3 align="center"> || <a href="https://arxiv">Paper</a> || <a href="https://lastbasket.github.io/MICCAI-2025-SurgTPGS/">Project Page</a> || </h3>
+  <h3 align="center"> || <a href="https://arxiv.org/abs/2506.23309">Paper</a> || <a href="https://lastbasket.github.io/MICCAI-2025-SurgTPGS/">Project Page</a> || </h3>
   <div align="center"></div>
 </p> 
 <p align="center">
@@ -24,4 +24,18 @@
     <img src="./figs/fig2_1-1.png" alt="Logo" width="90%">
   </a>
 </p>
+
+
+## Citation
+```
+@misc{huang2025surgtpgssemantic3dsurgical,
+      title={SurgTPGS: Semantic 3D Surgical Scene Understanding with Text Promptable Gaussian Splatting}, 
+      author={Yiming Huang and Long Bai and Beilei Cui and Kun Yuan and Guankun Wang and Mobarakol Islam and Nicolas Padoy and Nassir Navab and Hongliang Ren},
+      year={2025},
+      eprint={2506.23309},
+      archivePrefix={arXiv},
+      primaryClass={eess.IV},
+      url={https://arxiv.org/abs/2506.23309}, 
+}
+```
 <p align="center">
