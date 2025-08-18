@@ -1,0 +1,16 @@
+--extra-index-url https://download.pytorch.org/whl/cu117
+torch==1.13.1+cu117
+torchvision==0.14.1+cu117
+torchaudio==0.13.1
+mmcv==1.6.0
+matplotlib
+argparse
+lpips
+plyfile
+imageio-ffmpeg
+open3d
+imageio
+opencv-python
+tqdm
+ftfy
+git+https://github.com/facebookresearch/segment-anything.git
