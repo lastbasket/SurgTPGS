@@ -83,6 +83,12 @@ bash render.sh
 bash eval_fine.sh
 ```
 
+## Related Works
+Welcome to follow our related works:
+- [Endo-4DGX](https://lastbasket.github.io/MICCAI-2025-Endo-4DGX/): Robust Endoscopic Gaussian Splatting with Illumination Correction
+- [Endo2DTAM](https://github.com/lastbasket/Endo-2DTAM): Gaussian Splatting SLAM for Endoscopic Scene
+- [Endo-4DGS](https://github.com/lastbasket/Endo-4DGS): Monocular Endoscopic Scene Reconstruction with Gaussian Splatting
+
 ## Citation
 ```
 @misc{huang2025surgtpgssemantic3dsurgical,
