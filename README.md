@@ -74,7 +74,7 @@ pip install -e submodules/simple-knn
 pip install -e submodules/segment-anything-langsplat
 ```
 ## Datasets and Pre-trained Checkpoints
-1. We have the processed version of CholeSeg and EndoVis 2018 datasets with disparity maps. Download the datasets from the [Download Link](https://mycuhk-my.sharepoint.com/:u:/g/personal/1155209042_link_cuhk_edu_hk/EY6gIiInSf5MuE0_JsMQczgBqnrAum4rNDhDgqEIHvkRVg?e=1FsUTQ), unzip to the following structure:
+1. We have the processed version of CholeSeg and EndoVis 2018 datasets with disparity maps. Download the datasets from the [Download Link](https://mycuhk-my.sharepoint.com/:u:/g/personal/1155209042_link_cuhk_edu_hk/EY6gIiInSf5MuE0_JsMQczgBqnrAum4rNDhDgqEIHvkRVg?e=1FsUTQ), and for SurgTPGS++ we extend to CaDISv2 dataset (coming soon), all files are unzip to the following structure:
 ```
 ├── data
 │   ├── cholecseg_sub
@@ -94,7 +94,7 @@ pip install -e submodules/segment-anything-langsplat
 │   ├── sam_vit_h_4b8939.pth
 ```
 
-For SurgTPGS++, also place the dense feature extraction and aggregation checkpoints (coming soon) used by the `*_agg.sh` scripts, for example:
+For SurgTPGS++, also place the dense feature extraction and aggregation [checkpoints](https://mycuhk-my.sharepoint.com/:f:/g/personal/1155209042_link_cuhk_edu_hk/IgCY-um62ILTTZHqxePhFjNaAWLJd9bxYxA99lw0PsoC-Cw?e=xhOJkf)  used by the `*_agg.sh` scripts, for example:
 ```
 ├── ckpts
 │   ├── model_cholecseg_extract.pth
