@@ -48,6 +48,8 @@ class Scene:
             scene_info = sceneLoadTypeCallbacks["CholecSeg8k"](args.source_path)
         elif "endovis" in args.model_path:
             scene_info = sceneLoadTypeCallbacks["Endovis_2018"](args.source_path)
+        elif "cadis" in args.model_path:
+            scene_info = sceneLoadTypeCallbacks["CaDisv2"](args.source_path)
         else:
             assert False, "Could not recognize scene type!"
                 

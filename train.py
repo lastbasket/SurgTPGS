@@ -1,4 +1,4 @@
-#
+                                                                 #
 # Copyright (C) 2023, Inria
 # GRAPHDECO research group, https://team.inria.fr/graphdeco
 # All rights reserved.
@@ -40,7 +40,7 @@ except ImportError:
 
 def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_iterations, 
                          checkpoint_iterations, checkpoint, debug_from,
-                         gaussians, scene, tb_writer, train_iter, timer):
+                         gaussians, scene, tb_writer, train_iter, timer, wo_deform):
     first_iter = 0
     gaussians.training_setup(opt)
     if checkpoint:
@@ -93,7 +93,7 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
         viewspace_point_tensor_list = []
         
         for viewpoint_cam in viewpoint_cams:
-            render_pkg = render(viewpoint_cam, gaussians, pipe, background, include_feature=hyper.include_feature)
+            render_pkg = render(viewpoint_cam, gaussians, pipe, background, include_feature=hyper.include_feature, use_deform=not wo_deform)
             image, depth, viewspace_point_tensor, visibility_filter, radii = \
                 render_pkg["render"], render_pkg["depth"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
             gt_image = viewpoint_cam.original_image.cuda().float()
@@ -132,26 +132,36 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
         img_tvloss = TV_loss(image_tensor)
             
         # for ablation comment tv
-        loss = Ll1 + depth_loss + opt.tv_weight*(depth_tvloss + img_tvloss)
+        loss = Ll1 + depth_loss + opt.tv_weight_dep*(depth_tvloss + img_tvloss) + opt.tv_weight_img*img_tvloss
         
         if hyper.include_feature:
             language_feature = render_pkg['render_lang']
-            gt_language_feature, language_feature_mask, edge = viewpoint_cam.get_language_feature(language_feature_dir=dataset.lf_path, 
-                                                                                            feature_level=dataset.feature_level)
+            if dataset.use_agg:
+                gt_language_feature = viewpoint_cam.lang_features.cuda()
+                language_feature_mask = torch.ones((viewpoint_cam.image_height, viewpoint_cam.image_width)).cuda()
+                edge = None
+            else:
+                gt_language_feature, language_feature_mask, edge = viewpoint_cam.get_language_feature(language_feature_dir=dataset.lf_path, 
+                                                                                            feature_level=dataset.feature_level,
+                                                                                            use_agg=dataset.use_agg)
             lang_fea_masked = language_feature*language_feature_mask*mask_tensor[0]
             gt_fea_masked = gt_language_feature*language_feature_mask*mask_tensor[0]
             
             Ll1_lang = l1_loss(lang_fea_masked, gt_fea_masked) 
             seg_tvloss = TV_loss(language_feature[None])
-            # cd_loss = color_aware_dice_loss(lang_fea_masked.unsqueeze(0), gt_fea_masked.unsqueeze(0))
-            rs_loss = region_smooth_loss(gt_language_feature, language_feature)
             
+            # cd_loss = color_aware_dice_loss(lang_fea_masked.unsqueeze(0), gt_fea_masked.unsqueeze(0))
+            
+            if dataset.use_agg:
+                rs_loss = torch.tensor(0.).cuda()
+            else:
+                rs_loss = region_smooth_loss(gt_language_feature, language_feature)
             loss += Ll1_lang
             # loss += cd_loss
             
             # for ablation
-            loss += seg_tvloss*opt.tv_weight
-            loss += rs_loss*opt.tv_weight
+            loss += seg_tvloss*opt.tv_weight_lang
+            loss += rs_loss*opt.tv_weight_lang
             
         loss.backward()
         viewspace_point_tensor_grad = torch.zeros_like(viewspace_point_tensor)
@@ -223,7 +233,7 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
                 print("\n[ITER {}] Saving Checkpoint".format(iteration))
                 torch.save((gaussians.capture(), iteration), scene.model_path + "/chkpnt" + str(iteration) + ".pth")
 
-def training(dataset, hyper, opt, pipe, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint, debug_from, expname, extra_mark):
+def training(dataset, hyper, opt, pipe, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint, debug_from, expname, extra_mark, wo_deform):
     tb_writer = prepare_output_and_logger(expname)
     gaussians = GaussianModel(dataset.sh_degree, hyper)
     dataset.model_path = args.model_path
@@ -232,7 +242,7 @@ def training(dataset, hyper, opt, pipe, testing_iterations, saving_iterations, c
     timer.start()
     scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_iterations,
                          checkpoint_iterations, checkpoint, debug_from,
-                         gaussians, scene, tb_writer, opt.iterations,timer)
+                         gaussians, scene, tb_writer, opt.iterations,timer, wo_deform)
 
 def prepare_output_and_logger(expname):    
     if not args.model_path:
@@ -253,7 +263,7 @@ def training_report(tb_writer, iteration, loss_dict, elapsed, testing_iterations
     
     if tb_writer:
         for key in loss_dict:            
-            tb_writer.add_scalar(f'train_loss_patches/{key}', loss_dict[key].item(), iteration)
+            tb_writer.add_scalar(f'train_loss_patches/{key}', loss_dict[key], iteration)
         tb_writer.add_scalar(f'iter_time', elapsed, iteration)
     
 
@@ -279,6 +289,8 @@ if __name__ == "__main__":
     parser.add_argument('--port', type=int, default=6009)
     parser.add_argument('--debug_from', type=int, default=-1)
     parser.add_argument('--detect_anomaly', action='store_true', default=False)
+    parser.add_argument('--wo_deform', action='store_true', default=False)
+    
     parser.add_argument("--test_iterations", nargs="+", type=int, default=[i*500 for i in range(0,120)])
     parser.add_argument("--save_iterations", nargs="+", type=int, default=[3000,])
     parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[])
@@ -312,8 +324,9 @@ if __name__ == "__main__":
     # elif args.vlm == 'clip_fine':
     #     lp._language_features_name = "language_features_fine_dim3"
     print('Using VLM features:', lp.language_features_name)
+    print('Using use_agg:', lp.use_agg)
     training(lp, hp.extract(args), op.extract(args), pp.extract(args), args.test_iterations, \
-        args.save_iterations, args.checkpoint_iterations, args.start_checkpoint, args.debug_from, args.expname, args.extra_mark)
+        args.save_iterations, args.checkpoint_iterations, args.start_checkpoint, args.debug_from, args.expname, args.extra_mark, args.wo_deform)
 
     # All done
     print("\nTraining complete.")

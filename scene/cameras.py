@@ -15,6 +15,7 @@ import numpy as np
 from utils.graphics_utils import getWorld2View2, getProjectionMatrix, getProjectionMatrix2
 import os
 from utils.image_utils import smooth_sobel_edge_detection
+from torch.nn import functional as F
 
     
 class Camera(nn.Module):
@@ -22,7 +23,7 @@ class Camera(nn.Module):
                  image_name, uid,
                  trans=np.array([0.0, 0.0, 0.0]), scale=1.0, 
                  data_device = "cuda", time = 0, Znear=None, Zfar=None, 
-                 K=None, h=None, w=None
+                 K=None, h=None, w=None, lang_features=None
                  ):
         super(Camera, self).__init__()
 
@@ -35,6 +36,7 @@ class Camera(nn.Module):
         self.image_name = image_name
         self.time = time
         self.mask = mask
+        self.lang_features = lang_features
         try:
             self.data_device = torch.device(data_device)
         except Exception as e:
@@ -71,34 +73,42 @@ class Camera(nn.Module):
         self.full_proj_transform = (self.world_view_transform.unsqueeze(0).bmm(self.projection_matrix.unsqueeze(0))).squeeze(0)
         self.camera_center = self.world_view_transform.inverse()[3, :3]
         
-    def get_language_feature(self, language_feature_dir, feature_level):
+    def get_language_feature(self, language_feature_dir, feature_level, use_agg=False):
         language_feature_name = os.path.join(language_feature_dir, self.image_name)
-        seg_map = torch.from_numpy(np.load(language_feature_name + '_s.npy')) # [4, 480, 854]
-        
-        feature_map = torch.from_numpy(np.load(language_feature_name + '_f.npy')) # [N, 3] (Compress from [N, 512])
-        y, x = torch.meshgrid(torch.arange(0, self.image_height), torch.arange(0, self.image_width))
-        x = x.reshape(-1, 1)
-        y = y.reshape(-1, 1)
-        seg = seg_map[:, y, x].squeeze(-1).long()
-        # seg -> -1 -> 0
-        mask = seg != -1
-        if feature_level == 0: # default
-            point_feature1 = feature_map[seg[0:1]].squeeze(0)
-            mask = mask[0:1].reshape(1, self.image_height, self.image_width)
-        elif feature_level == 1: # s
-            point_feature1 = feature_map[seg[1:2]].squeeze(0)
-            mask = mask[1:2].reshape(1, self.image_height, self.image_width)
-        elif feature_level == 2: # m
-            point_feature1 = feature_map[seg[2:3]].squeeze(0)
-            mask = mask[2:3].reshape(1, self.image_height, self.image_width)
-        elif feature_level == 3: # l
-            point_feature1 = feature_map[seg[3:4]].squeeze(0)
-            mask = mask[3:4].reshape(1, self.image_height, self.image_width)
+        if use_agg:
+            point_feature = torch.from_numpy(np.load(language_feature_name + '_agg.npy')) # [192, 192, 3]
+            point_feature = F.interpolate(point_feature.permute(0, 3, 1, 2), \
+                size=(self.image_height, self.image_width))[0] # [1, 3, 192, 192] -> [1, 3, h, w]
+            mask = torch.ones((1, self.image_height, self.image_width))
+            edge = None
+            return point_feature.cuda(), mask.cuda(), edge
         else:
-            raise ValueError("feature_level=", feature_level)
-        # point_feature = torch.cat((point_feature2, point_feature3, point_feature4), dim=-1).to('cuda')
-        # h, w, c -> c, h, w
-        point_feature = point_feature1.reshape(self.image_height, self.image_width, -1).permute(2, 0, 1)
+            seg_map = torch.from_numpy(np.load(language_feature_name + '_s.npy')) # [4, 480, 854]
+            
+            # [N, 3] N对应N个class, 根据seg_map里面的index将[1, 3]映射到 [h, w, 3]的language feature
+            feature_map = torch.from_numpy(np.load(language_feature_name + '_f.npy')) # [N, 3] (Compress from [N, 512])
+            y, x = torch.meshgrid(torch.arange(0, self.image_height), torch.arange(0, self.image_width))
+            x = x.reshape(-1, 1)
+            y = y.reshape(-1, 1)
+            seg = seg_map[:, y, x].squeeze(-1).long()
+            # seg -> -1 -> 0
+            mask = seg != -1
+            if feature_level == 0: # default
+                point_feature1 = feature_map[seg[0:1]].squeeze(0)
+                mask = mask[0:1].reshape(1, self.image_height, self.image_width)
+            elif feature_level == 1: # s
+                point_feature1 = feature_map[seg[1:2]].squeeze(0)
+                mask = mask[1:2].reshape(1, self.image_height, self.image_width)
+            elif feature_level == 2: # m
+                point_feature1 = feature_map[seg[2:3]].squeeze(0)
+                mask = mask[2:3].reshape(1, self.image_height, self.image_width)
+            elif feature_level == 3: # l
+                point_feature1 = feature_map[seg[3:4]].squeeze(0)
+                mask = mask[3:4].reshape(1, self.image_height, self.image_width)
+            else:
+                raise ValueError("feature_level=", feature_level)
+            # h, w, c -> c, h, w
+            point_feature = point_feature1.reshape(self.image_height, self.image_width, -1).permute(2, 0, 1)
         #edge = smooth_sobel_edge_detection(point_feature)
         edge = None
         return point_feature.cuda(), mask.cuda(), edge

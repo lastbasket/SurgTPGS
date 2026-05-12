@@ -503,7 +503,7 @@ def build_model(state_dict: dict, prompt_depth=0, prompt_length=0):
     for key in ["input_resolution", "context_length", "vocab_size"]:
         del state_dict[key]
 
-    convert_weights(model)
+    # convert_weights(model)
     
     # Modify the state dict to match the model's keys with modified attention block
     new_state_dict = OrderedDict()

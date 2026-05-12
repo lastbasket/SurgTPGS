@@ -57,7 +57,8 @@ class ModelParams(ParamGroup):
         self.render_process=False
         self.extra_mark = None
         self.camera_extent = None
-        self._language_features_name = "language_features_fine_dim3"
+        self._language_features_name = "language_features_agg_dim3"
+        self.use_agg = True
         self._feature_level = -1
         super().__init__(parser, "Loading Parameters", sentinel)
 
@@ -135,7 +136,10 @@ class OptimizationParams(ParamGroup):
         self.language_feature_lr = 0.0025 # TODO: update
         self.language_net_lr = 0.0025 # TODO: update
         
-        self.tv_weight = 1e-2
+        self.tv_weight_dep = 1e-2  # default 1e-2
+        self.tv_weight_img = 1e-4  # default 1e-2
+        self.tv_weight_lang = 1e-2  # default 1e-2
+        
         
         super().__init__(parser, "Optimization Parameters")
 

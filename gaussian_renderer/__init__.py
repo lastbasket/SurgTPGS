@@ -16,7 +16,7 @@ from scene.flexible_deform_model import GaussianModel
 from utils.sh_utils import eval_sh
 
 def render_flow(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor, 
-                scaling_modifier = 1.0, override_color = None, include_feature=False):
+                scaling_modifier = 1.0, override_color = None, include_feature=False, use_deform=True):
     """
     Render the scene. 
     
@@ -73,19 +73,28 @@ def render_flow(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Ten
         rotations = pc._rotation
     deformation_point = pc._deformation_table
     
-    if include_feature:
-        language_feature = pc.get_language_feature
-        means3D_deform, scales_deform, rotations_deform, language_feature_deform = pc.deformation(means3D[deformation_point], scales[deformation_point], 
-                                                                         rotations[deformation_point],
-                                                                         ori_time,
-                                                                         lang_fea=language_feature[deformation_point])
-        language_feature_final = torch.zeros_like(language_feature)
-        language_feature_final[deformation_point] = language_feature_deform
-        language_feature_final[~deformation_point] = language_feature[~deformation_point]
+    if use_deform:
+        if include_feature:
+            language_feature = pc.get_language_feature
+            means3D_deform, scales_deform, rotations_deform, language_feature_deform = pc.deformation(means3D[deformation_point], scales[deformation_point], 
+                                                                            rotations[deformation_point],
+                                                                            ori_time,
+                                                                            lang_fea=language_feature[deformation_point])
+            language_feature_final = torch.zeros_like(language_feature)
+            language_feature_final[deformation_point] = language_feature_deform
+            language_feature_final[~deformation_point] = language_feature[~deformation_point]
+        else:
+            means3D_deform, scales_deform, rotations_deform = pc.deformation(means3D[deformation_point], scales[deformation_point], 
+                                                                            rotations[deformation_point],
+                                                                            ori_time)
     else:
-        means3D_deform, scales_deform, rotations_deform = pc.deformation(means3D[deformation_point], scales[deformation_point], 
-                                                                         rotations[deformation_point],
-                                                                         ori_time)
+        if include_feature:
+            language_feature = pc.get_language_feature
+            language_feature_final = language_feature
+        means3D_deform = means3D[deformation_point]
+        scales_deform = scales[deformation_point]
+        rotations_deform = rotations[deformation_point]
+        
     opacity_deform = opacity[deformation_point]
         
     with torch.no_grad():
@@ -140,15 +149,6 @@ def render_flow(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Ten
         opacity_lang_final[~deformation_point] = opacity_lang[~deformation_point]
         opacity_lang = pc.opacity_activation(opacity_lang)
         
-        # rendered_language_feature, _, _ = rasterizer(
-        #     means3D = means3D_final,
-        #     means2D = means2D,
-        #     shs = None,
-        #     colors_precomp = language_feature_final,
-        #     opacities = opacity_lang,
-        #     scales = scales_final,
-        #     rotations = rotations_final,
-        #     cov3D_precomp = cov3D_precomp)
         
         # for ablation
         rendered_language_feature, _, _ = rasterizer(
