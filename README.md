@@ -17,8 +17,9 @@
 </p> 
 
   <h4 align="center">SurgTPGS++: Text-Promptable Gaussian Splatting with Dense Features Aggregation for Semantic 4D Surgical Scene Understanding</h4>
+  <h4 align="center"> || <a href="https://lastbasket.github.io/SurgTPGS--page/">Project Page</a> || </h4>
 <p align="center">
-  <a href="https://lastbasket.github.io/MICCAI-2025-SurgTPGS/">
+  <a href="https://lastbasket.github.io/SurgTPGS--page/">
     <img src="./figs/pipeline.png" alt="Logo" width="90%">
   </a>
 </p>
