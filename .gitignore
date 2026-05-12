@@ -13,6 +13,7 @@ __pycache__/
 *__pycache__*
 *.npy
 *.png
+!figs/pipeline.png
 reconstruct/
 *.so
 data/
